@@ -1,48 +1,46 @@
-"""
-model.py — Feedforward Neural Network Architecture for Next-Word Prediction
-
-This script defines a simple Feedforward Neural Network (FNN) for next-word prediction tasks
-using the Penn Treebank dataset.
-
-Architecture:
-    - Input Layer
-    - Two Hidden Layers with ReLU activation
-    - Output Layer with raw logits (Softmax applied during training/inference)
-
-The model learns relationships between consecutive words to predict the next one.
-"""
-
 import torch
 import torch.nn as nn
 
-
 class FeedforwardNN(nn.Module):
-    """
-    Simple Feedforward Neural Network for next-word prediction.
-
-    Args:
-        input_size (int): Size of the input layer (vocabulary embedding dimension).
-        hidden_size1 (int): Number of units in the first hidden layer.
-        hidden_size2 (int): Number of units in the second hidden layer.
-        output_size (int): Size of the output layer (number of vocabulary words).
-
-    Architecture:
-        Input → Linear → ReLU → Linear → ReLU → Linear → Output
-    """
-
-    def __init__(self, input_size, hidden_size1, hidden_size2, output_size):
+    def __init__(self, seq_len, embedding_dim, hidden1, hidden2, vocab_size):
+        """
+        seq_len: Number of tokens in a single input sequence (sentence length after padding).
+        embedding_dim: size of token embeddings (how many different hidden features the neural network uses to describe each word.)
+        hidden1/hidden2: sizes of hidden layers
+        #vocab_size → Number of classes in output (the size of your vocabulary). Each neuron in the output predicts the likelihood of a particular word being the next word.
+        """
+        #Initialize Parent Class
         super().__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size1)
-        self.relu1 = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_size1, hidden_size2)
-        self.relu2 = nn.ReLU()
-        self.fc3 = nn.Linear(hidden_size2, output_size)
+        self.seq_len = seq_len
+        self.embedding_dim = embedding_dim
+        self.vocab_size = vocab_size        #vocab_size → Number of classes in output (the size of your vocabulary). Each neuron in the output predicts the likelihood of a particular word being the next word.
 
+        
+
+       
+       # Embedding Layer: map token indices -> dense vectors
+       # input size = seq_len × embedding_dim
+        self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim, padding_idx=0)
+
+        # feedforward on flattened embeddings
+        # FNNs expect 2D input [batch_size, features]:Flatten [batch_size, seq_len, embedding_dim] → [batch_size, seq_len*embedding_dim].
+        # Each sentence now becomes a single vector representing all word embeddings concatenated.
+        in_features = seq_len * embedding_dim
+
+
+        self.layers = nn.Sequential(   # is a PyTorch container that lets you stack layers in order(pipline):Input → Layer1 → Layer2 → Layer3 → Output
+            nn.Linear(in_features, hidden1),  # Each of the hidden1 neurons sees all words in the input sentence
+            nn.ReLU(),   # Adds non-linearity so the network can learn complex patterns.
+            nn.Linear(hidden1, hidden2), # hidden2 neurons learn from hidden1 activations.
+            nn.ReLU(),   #Non-linearity again.
+            nn.Linear(hidden2, vocab_size)  # logits over vocabulary(They represent the linear output of a model before it is transformed into probabilities.)
+        )
+
+
+    # Forward Pass
     def forward(self, x):
-        """Defines forward propagation of data through the network."""
-        x = self.fc1(x)
-        x = self.relu1(x)
-        x = self.fc2(x)
-        x = self.relu2(x)
-        x = self.fc3(x)
-        return x
+        # x: LongTensor [batch, seq_len]
+        emb = self.embedding(x)                 # [batch, seq_len, embedding_dim]  batch_sizenumber of sentences processed together
+        flat = emb.view(emb.size(0), -1)        # [batch, seq_len * embedding_dim]
+        out = self.layers(flat)                    # [batch, vocab_size]
+        return out
