@@ -13,7 +13,6 @@ from pathlib import Path
 from nltk.tokenize import word_tokenize
 
 
-
 def load_and_tokenize(file_path):
     """
     Reads a text file and splits it into tokenized sentences.
@@ -23,6 +22,9 @@ def load_and_tokenize(file_path):
 
     Returns:
         list: A list of tokenized sentences (each sentence = list of tokens).
+        A Python list where:
+        - each item = one sentence
+        - each sentence = a list of words
     """
     sentences = []
     with open(file_path, 'r', encoding='utf-8') as f:
@@ -43,41 +45,62 @@ def build_vocab(sentences):
     Returns:
         tuple: (word_to_index, index_to_word)
     """
-    all_tokens = [token for sent in sentences for token in sent]
-    vocab = set(all_tokens)
+    all_tokens = [token for sent in sentences for token in sent]  # loop over each sentence (list)  then  # loop over each word inside the sentence   and append 
+    vocab = set(all_tokens)     # unique words in the dataset
     word_to_index = {"<PAD>": 0, "<UNK>": 1}
+               # <PAD> = 0 → used to pad sentences to same length.
+
+              # <UNK> = 1 → used for unknown words not in the vocabulary.
 
     for idx, word in enumerate(sorted(vocab), start=2):
         word_to_index[word] = idx
 
-    index_to_word = {idx: word for word, idx in word_to_index.items()}
+    index_to_word = {idx: word for word, idx in word_to_index.items()} # word_to_index.items():[("<PAD>", 0), ("<UNK>", 1), ("a", 2), ("cat", 3), ("dog", 4)]
+
     return word_to_index, index_to_word
 
 
 def prepare_data(sentences, word_to_index, max_len=None):
     """
-    Converts tokenized sentences into padded numerical sequences.
+    Convert tokenized sentences into input-output sequences for next-word prediction.
 
-    Args:
-        sentences (list): Tokenized sentences.
-        word_to_index (dict): Word to index mapping.
-        max_len (int, optional): Maximum sequence length. Computed if None.
+    Parameters:
+    - sentences: list of tokenized sentences
+    - word_to_index: dictionary mapping words to integer indices
+    - max_len: fixed maximum sequence length (padding/truncating)
 
     Returns:
-        tuple: (inputs, outputs) as NumPy arrays.
+    - inputs: numpy array of shape (num_sentences, max_len-1)
+    - outputs: numpy array of shape (num_sentences, max_len-1)
     """
+     # Compute longest sentence length
     if max_len is None:
         max_len = max(len(s) for s in sentences)
 
     inputs, outputs = [], []
+
     for sentence in sentences:
-        indices = [word_to_index.get(token, 1) for token in sentence]  # 1 = <UNK>
+
+        # Convert tokens → integers, <UNK> = 1
+        indices = [word_to_index.get(token, 1) for token in sentence]   #.get(key, default):default value if key not found==>1
+
+        # Apply padding or truncation
         if len(indices) > max_len:
-            indices = indices[:max_len]
+            indices = indices[:max_len]    #truncate long sentence
         else:
-            indices += [0] * (max_len - len(indices))  # padding with <PAD>
+            indices += [0] * (max_len - len(indices))  # pad short sentence with <PAD> = 0    
 
-        inputs.append(indices[:-1])
-        outputs.append(indices[1:])
+        # Create shifted input/output pairs
+        inputs.append(indices[:-1])  #inputs → all words except the last in the sentence.
+        outputs.append(indices[1:])  #outputs → all words except the first in the sentence.
 
-    return np.array(inputs), np.array(outputs)
+    return np.array(inputs), np.array(outputs), max_len
+
+#Input array shape: (num_sentences, max_len-1)
+
+# Output array shape: (num_sentences, max_len-1)
+
+# Each sentence → one training example (a sequence of tokens)
+
+# Each token in the sentence → one prediction target for next-word prediction
+
