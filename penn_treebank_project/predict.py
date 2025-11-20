@@ -9,7 +9,7 @@ def predict_next_word(model, input_sequence, word_to_index, index_to_word, devic
         input_sequence: list of word indices (a sequence)
         word_to_index: dict mapping words → indices
         index_to_word: dict mapping indices → words
-    
+        device: "cpu" or "cuda"
 
     Returns:
         str: predicted next word
