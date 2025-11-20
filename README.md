@@ -1,7 +1,7 @@
 
-*# Penn Treebank Feedforward Neural Network*
+# *Penn Treebank Feedforward Neural Network*
 
-*### Task 1*
+### *Task 1*
 ***Description:***
 *Date: September 25, 2025*
 
